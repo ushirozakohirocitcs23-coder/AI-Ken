@@ -1,0 +1,28 @@
+# Local production-like stack: AI-KEN + PostgreSQL.
+#   cp .env.example .env   (set SECRET_KEY, ANTHROPIC_API_KEY, ADMIN_EMAIL, ADMIN_PASSWORD)
+#   docker compose up --build
+#   open http://localhost:8000
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: aiken
+      POSTGRES_PASSWORD: aiken
+      POSTGRES_DB: aiken
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiken"]
+      interval: 5s
+      retries: 10
+  app:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://aiken:aiken@db:5432/aiken
+      APP_ENV: production
+      PUBLIC_URL: http://localhost:8000
+    ports: ["8000:8000"]
+    depends_on:
+      db: { condition: service_healthy }
+volumes:
+  pgdata:
