@@ -78,6 +78,15 @@ def _anthropic(system: str, prompt: str, max_tokens: int, temperature: float) ->
     return "".join(block.get("text", "") for block in data.get("content", []) if block.get("type") == "text")
 
 
+def _openai_body(system: str, prompt: str, max_tokens: int, temperature: float) -> dict:
+    body = {"model": settings.openai_model, "max_tokens": max_tokens, "temperature": temperature,
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}]}
+    if "gpt-oss" in settings.openai_model.lower():
+        body["reasoning_effort"] = "low"
+        body["max_tokens"] = max(max_tokens * 3, 4000)
+    return body
+
+
 def _openai(system: str, prompt: str, max_tokens: int, temperature: float) -> str:
     headers = {"content-type": "application/json"}
     if settings.openai_api_key:
@@ -85,8 +94,7 @@ def _openai(system: str, prompt: str, max_tokens: int, temperature: float) -> st
     resp = httpx.post(
         settings.openai_base_url.rstrip("/") + "/chat/completions",
         headers=headers,
-        json={"model": settings.openai_model, "max_tokens": max_tokens, "temperature": temperature,
-              "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}]},
+        json=_openai_body(system, prompt, max_tokens, temperature),
         timeout=settings.llm_timeout,
     )
     if resp.status_code != 200:
